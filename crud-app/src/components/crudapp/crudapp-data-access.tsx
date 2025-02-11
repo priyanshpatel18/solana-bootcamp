@@ -36,7 +36,12 @@ export function useJournalProgram() {
   const createEntry = useMutation<string, Error, CreateEntryArgs>({
     mutationKey: ['journalEntry', 'create', { cluster }],
     mutationFn: async ({ title, message }: CreateEntryArgs) => {
-      return await program.methods.createJournalEntry(title, message).rpc()
+      console.log(programId);
+      
+      const tx = await program.methods.createJournalEntry(title, message).rpc();
+      console.log(tx);
+
+      return tx;
     },
     onSuccess: (signature) => {
       transactionToast(signature);

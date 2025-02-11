@@ -1,12 +1,12 @@
 'use client'
 
+import { useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey } from '@solana/web3.js'
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { useJournalProgram, useJournalProgramAccount } from './crudapp-data-access'
-import { useWallet } from '@solana/wallet-adapter-react'
-import toast from 'react-hot-toast'
 
 export function EntryCreate() {
   const { createEntry } = useJournalProgram();
@@ -15,6 +15,7 @@ export function EntryCreate() {
   const { publicKey } = useWallet();
 
   function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     if (!publicKey) {
       return toast.error('Wallet not connected');
     }
@@ -24,6 +25,8 @@ export function EntryCreate() {
     }
 
     createEntry.mutateAsync({ title, message })
+    setTitle('');
+    setMessage('');
   }
 
   return (
@@ -74,8 +77,20 @@ export function Journal() {
 export default function JournalEntryCard({ account }: { account: PublicKey }) {
   const { accountQuery, updateEntry, deleteEntry } = useJournalProgramAccount({ account });
   const { publicKey } = useWallet();
-  const title = accountQuery.data?.title || "";
+  const [title, setTitle] = useState<string>("");
   const [message, setMessage] = useState<string>("");
+
+  useEffect(() => {
+    const message = accountQuery.data?.message;
+    if (message?.trim()) {
+      setMessage(message);
+    }
+
+    const title = accountQuery.data?.title;
+    if (title?.trim()) {
+      setTitle(title);
+    }
+  }, [accountQuery.data])
 
   const handleUpdate = () => {
     if (!publicKey) {
@@ -83,6 +98,9 @@ export default function JournalEntryCard({ account }: { account: PublicKey }) {
     }
     if (!message.trim()) {
       return toast.error("Message is required")
+    }
+    if (message.trim() === accountQuery.data?.message) {
+      return toast.error("No changes made")
     }
 
     updateEntry.mutateAsync({ title, message })
@@ -112,9 +130,10 @@ export default function JournalEntryCard({ account }: { account: PublicKey }) {
         <div className="flex space-x-4">
           <button onClick={handleUpdate}>Edit</button>
           <button onClick={() => {
-            if (title.trim()) {
+            if (!title.trim()) {
               return toast.error("Title is missing");
             }
+
             deleteEntry.mutate({ title })
           }}>Delete</button>
           <button onClick={handleRefresh}>Refresh</button>
